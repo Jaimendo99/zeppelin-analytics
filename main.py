@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from db import get_database
 from pydantic import BaseModel
 from bson import ObjectId
+import uvicorn
 
 
 app = FastAPI()
@@ -47,3 +48,7 @@ async def add_report(report: Report):
 @app.get("/")
 async def home():
     return {"hello":"world"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=3100)
