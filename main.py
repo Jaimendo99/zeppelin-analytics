@@ -22,7 +22,7 @@ app = FastAPI()
 mongo_client = get_database()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
@@ -38,8 +38,8 @@ async def root(
 
 
 class Report(BaseModel):
-    userId: int
-    sessionId: str | None
+    userId: str
+    sessionId: int | None
     type: str
     device: str
     addedAt: int
