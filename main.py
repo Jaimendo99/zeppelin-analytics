@@ -1,6 +1,5 @@
 from typing import Annotated
 from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials
 from db import get_database
 from pydantic import BaseModel
 from bson import ObjectId
@@ -8,6 +7,7 @@ import uvicorn
 from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer, HTTPAuthorizationCredentials
 import os
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
 
 load_dotenv()
 
@@ -19,7 +19,14 @@ clerk_config = ClerkConfig(jwks_url=JWT_SECRET)
 clerk_auth_guard = ClerkHTTPBearer(config=clerk_config)
 
 app = FastAPI()
-
+mongo_client = get_database()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 @app.get("/")
 async def root(
@@ -30,11 +37,8 @@ async def root(
     return {"message": "Hello World, you are signed in"}
 
 
-mongo_client = get_database()
-
-
 class Report(BaseModel):
-    userId: str
+    userId: int
     sessionId: str | None
     type: str
     device: str
