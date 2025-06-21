@@ -1,13 +1,13 @@
-from typing import Annotated
 from fastapi import FastAPI, HTTPException, Depends, Request
 from db import get_database
-from pydantic import BaseModel
+from typing import Any, Dict, List, Union, Annotated
+from pydantic import BaseModel, Field
 from bson import ObjectId
 import uvicorn
 from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer, HTTPAuthorizationCredentials
 import os
 from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 
 load_dotenv()
 
@@ -28,6 +28,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+
 @app.get("/")
 async def root(
     request: Request,
@@ -36,48 +37,67 @@ async def root(
 ):
     return {"message": "Hello World, you are signed in"}
 
-
 class Report(BaseModel):
     userId: str
-    sessionId: int | None
+    sessionId: int | None = None
     type: str
     device: str
     addedAt: int
-    body: dict
+    # accept a single body OR a list of bodies
+    body: Union[Dict[str, Any], List[Dict[str, Any]]] = Field(
+        ...,
+        description="Single report payload or a list of payloads sent in one \
+request",
+    )
 
 
 @app.post("/add/report")
-async def add_report(report: Report,
-                     credentials: Annotated[HTTPAuthorizationCredentials, Depends(
-                         clerk_auth_guard)]
-                     ):
+async def add_report(
+    report: Report,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials, Depends(clerk_auth_guard)
+    ],
+):
     if mongo_client is None:
-        raise HTTPException(
-            status_code=503, detail="MongoDB connection failed")
+        raise HTTPException(status_code=503, detail="MongoDB connection failed")
 
-    db = mongo_client["test"]
-    collection = db["reports"]
-    report_dict = report.model_dump() if hasattr(
-        report, "model_dump") else report.dict()
+    collection = mongo_client["test"]["reports"]
+    # Convert pydantic model → dict
+    report_dict = report.model_dump()
 
+    # Split common metadata from body
+    meta: Dict[str, Any] = {k: v for k, v in report_dict.items() if k != "body"}
+    body_payload = report_dict["body"]
+
+    # ──────────────────────────────────────────────────────────
+    # CASE 1: body is a LIST  →  insert_many
+    # ──────────────────────────────────────────────────────────
+    if isinstance(body_payload, list):
+        docs: List[Dict[str, Any]] = [
+            {**meta, "body": single_body} for single_body in body_payload
+        ]
+
+        try:
+            result = collection.insert_many(docs)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to insert reports: {exc}"
+            )
+
+        inserted_ids = [str(_id) for _id in result.inserted_ids]
+        return {"status": "success", "insertedIds": inserted_ids}
+
+    # ──────────────────────────────────────────────────────────
+    # CASE 2: body is a single DICT  →  insert_one
+    # ──────────────────────────────────────────────────────────
     try:
-        result = collection.insert_one(report_dict)
-        if not result.acknowledged or not result.inserted_id:
-            raise HTTPException(status_code=500,
-                                detail="Failed to insert report: No ID returned or operation not acknowledged.")
-    except Exception as e:
+        result = collection.insert_one({**meta, "body": body_payload})
+    except Exception as exc:
         raise HTTPException(
-            status_code=500, detail=f"Failed to insert report: {e}")
+            status_code=500, detail=f"Failed to insert report: {exc}"
+        )
 
-    if result.inserted_id:
-        report_dict["_id"] = str(result.inserted_id)
-    elif "_id" in report_dict and isinstance(report_dict["_id"], ObjectId):
-        report_dict["_id"] = str(report_dict["_id"])
-    else:
-        raise HTTPException(
-            status_code=500, detail="Report inserted but failed to retrieve its ID for the response.")
-
-    return {"status": "success", "report": report_dict}
+    return {"status": "success", "insertedId": str(result.inserted_id)}
 
 
 if __name__ == "__main__":
