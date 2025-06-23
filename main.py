@@ -37,9 +37,11 @@ async def root(
 ):
     return {"message": "Hello World, you are signed in"}
 
+
 class Report(BaseModel):
     userId: str
     sessionId: int | None = None
+    courseId: int
     type: str
     device: str
     addedAt: int
@@ -59,14 +61,16 @@ async def add_report(
     ],
 ):
     if mongo_client is None:
-        raise HTTPException(status_code=503, detail="MongoDB connection failed")
+        raise HTTPException(
+            status_code=503, detail="MongoDB connection failed")
 
     collection = mongo_client["test"]["reports"]
     # Convert pydantic model → dict
     report_dict = report.model_dump()
 
     # Split common metadata from body
-    meta: Dict[str, Any] = {k: v for k, v in report_dict.items() if k != "body"}
+    meta: Dict[str, Any] = {k: v for k,
+                            v in report_dict.items() if k != "body"}
     body_payload = report_dict["body"]
 
     # ──────────────────────────────────────────────────────────
