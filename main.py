@@ -2,12 +2,14 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from db import get_database
 from typing import Any, Dict, List, Union, Annotated
 from pydantic import BaseModel, Field
-from bson import ObjectId
 import uvicorn
 from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer, HTTPAuthorizationCredentials
 import os
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
+from dataframeloader import load_lake, lake
+from asyncio import run
+from service import get_user_report
 
 load_dotenv()
 
@@ -27,6 +29,11 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+
+@app.get("/student/report/")
+async def student_report(user_id:str, start_date: str, end_date: str):
+    return get_user_report(lake, user_id, start_date, end_date)
 
 
 @app.get("/")
@@ -106,3 +113,4 @@ async def add_report(
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=3100)
+    run(load_lake())
