@@ -5,7 +5,6 @@ from utils import parse_date, parse_body
 
 lake = pd.DataFrame()
 
-
 async def load_lake(api: APIClient = None,db =None):
     print('Loading lake...')
     global lake
@@ -27,8 +26,10 @@ async def load_lake(api: APIClient = None,db =None):
                       'video_percentage.at', 'video_percentage.percentage',
                       'video_speed_changed.at', 'video_speed_changed.speed',
                       'weak_rssi.value', 'wearable_off.at']
-    lake['addedAt'] = pre_lake['addedAt'].apply(parse_date)
+    pre_lake['addedAt'] = pre_lake['addedAt'].apply(parse_date)
     body_df = pre_lake.apply(lambda row: parse_body(row['body'], row['type']), axis=1)
     processed_lake = pd.concat([pre_lake.drop(columns=['body']), body_df], axis=1)
-    lake = processed_lake.drop_duplicates(subset=metric_columns)
-    print('Lake loaded successfully with shape:', lake.shape)
+    processed_lake = processed_lake.drop_duplicates(subset=metric_columns)
+    lake = processed_lake.reset_index(drop=True)
+    lake.to_csv('lake.csv')
+    print('🖕🏼Lake loaded successfully with shape:', lake.shape, 'and columns:', lake.columns.tolist())

@@ -97,8 +97,9 @@ def stress_report(
     start = parse_date(date_from)
     end = parse_date(date_to)
 
+    print("COLUMNAS DE EL DATAFRAME", df.columns)
     mask = (
-            (df["userId"] == user_id)
+            (df["user_id"] == user_id)
             & (df["addedAt"] >= start)
             & (df["addedAt"] <= end)
     )

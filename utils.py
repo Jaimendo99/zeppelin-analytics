@@ -93,7 +93,7 @@ def parse_body(body:dict, event_type :str) -> pd.Series:
     })
 
     return pd.Series({
-        'type': event_type
+        'other_type': event_type
     })
 
 
