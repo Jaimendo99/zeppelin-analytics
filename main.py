@@ -30,6 +30,7 @@ if not API_IDENTIFIER or not API_PASSWORD:
 clerk_config = ClerkConfig(jwks_url=JWT_SECRET)
 clerk_auth_guard = ClerkHTTPBearer(config=clerk_config)
 
+
 # --------------------------------------------------------------------------
 # Data Lake Loading and Refreshing Logic
 # --------------------------------------------------------------------------
@@ -87,6 +88,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # --------------------------------------------------------------------------
 # Pydantic Models for Request/Response
 # --------------------------------------------------------------------------
@@ -102,11 +104,15 @@ class Report(BaseModel):
         description="Single report payload or a list of payloads sent in one request",
     )
 
+
 # --------------------------------------------------------------------------
 # API Endpoints
 # --------------------------------------------------------------------------
 @app.get("/student/report/")
-async def student_report(user_id: str, start_date: str, end_date: str):
+async def student_report(user_id: str, start_date: str, end_date: str,
+     request: Request,
+     credentials: HTTPAuthorizationCredentials | None = Depends(clerk_auth_guard)
+ ):
     """
     Generates a student report from the in-memory data lake.
     """
@@ -130,8 +136,8 @@ async def student_report(user_id: str, start_date: str, end_date: str):
 
 @app.get("/")
 async def root(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(clerk_auth_guard)
+        request: Request,
+        credentials: HTTPAuthorizationCredentials | None = Depends(clerk_auth_guard)
 ):
     """
     A protected root endpoint to verify authentication.
@@ -141,10 +147,10 @@ async def root(
 
 @app.post("/add/report")
 async def add_report(
-    report: Report,
-    credentials: Annotated[
-        HTTPAuthorizationCredentials, Depends(clerk_auth_guard)
-    ],
+        report: Report,
+        credentials: Annotated[
+            HTTPAuthorizationCredentials, Depends(clerk_auth_guard)
+        ],
 ):
     """
     Adds a new report or a batch of reports to the database.
