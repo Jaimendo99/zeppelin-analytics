@@ -110,8 +110,8 @@ class Report(BaseModel):
 # --------------------------------------------------------------------------
 @app.get("/student/report/")
 async def student_report(user_id: str, start_date: str, end_date: str,
-     request: Request,
-     credentials: HTTPAuthorizationCredentials | None = Depends(clerk_auth_guard)
+     # request: Request,
+     # credentials: HTTPAuthorizationCredentials | None = Depends(clerk_auth_guard)
  ):
     """
     Generates a student report from the in-memory data lake.
