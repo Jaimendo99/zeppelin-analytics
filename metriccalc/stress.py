@@ -107,7 +107,11 @@ def stress_report(
     if dfx.empty:
         # Return a default structure if no data is found
         return {"stress": 0.0, "sub_stress": []}
+    return stress_score_(dfx)
 
+def stress_score_(dfx: pd.DataFrame) -> Dict[str, Any]:
+    sub_stress_list: List[Dict[str, Any]] = []
+    session_stress_levels: List[float] = []
     weights: Dict[str, float] = {
         "heartrate": 0.40,
         "activity": 0.15,
@@ -115,9 +119,6 @@ def stress_report(
         "jumping": 0.10,
         "focus_loss": 0.20,
     }
-
-    sub_stress_list: List[Dict[str, Any]] = []
-    session_stress_levels: List[float] = []
 
     for session_id, g in dfx.groupby("sessionId"):
         session_start = g["addedAt"].min()

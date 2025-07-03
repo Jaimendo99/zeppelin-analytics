@@ -133,6 +133,39 @@ async def student_report(user_id: str, start_date: str, end_date: str,
         )
     return report
 
+@app.get("/teacher/report/")
+async def teacher_report(
+        teacher_id: str,
+        request: Request,
+        credentials: HTTPAuthorizationCredentials | None = Depends(clerk_auth_guard),
+        start_date: str = None,
+        end_date: str = None,
+):
+    """
+    Generates a teacher report from the in-memory data lake.
+    """
+    if df_loader.lake.empty:
+        raise HTTPException(
+            status_code=503,
+            detail="Data lake is not yet available. Please try again in a few moments."
+        )
+    # Assuming get_teacher_report is imported or defined elsewhere
+    from metriccalc.teacherreport import get_teacher_report
+    try:
+        report = await get_teacher_report(
+            api=APIClient(identifier=API_IDENTIFIER, password=API_PASSWORD),
+            df=df_loader.lake,
+            teacher_id=teacher_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+    return report
+
 
 @app.get("/")
 async def root(

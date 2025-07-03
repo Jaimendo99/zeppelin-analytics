@@ -225,6 +225,33 @@ def get_concentration_score( full_df: pd.DataFrame, user_id: str, start_date: st
 
     # Get all historical data for this user for the video jump calculation
     user_history_df = full_df[full_df["userId"] == user_id].copy()
+    return get_concentration_score_no_filter(user_period_df, user_history_df)
+
+
+def get_concentration_score_no_filter(
+        user_period_df: pd.DataFrame, user_history_df: pd.DataFrame
+) -> Optional[Dict[str, Any]]:
+    """
+    Calculates the average concentration score for a given user's sessions
+    within a specified period.
+
+    Args:
+        user_period_df: A DataFrame containing events for a specific user
+                        within the desired reporting period. This DataFrame
+                        should already be filtered by userId and date range.
+        user_history_df: A DataFrame containing all historical events for
+                         the specific user. This is used for metrics like
+                         VIDEO_JUMP to compare against historical averages.
+
+    Returns:
+        A dictionary containing the average concentration score (0-1) and
+        individual sub-scores for each session, or None if no valid data
+        or sessions are found.
+    """
+
+    if user_period_df.empty or "sessionId" not in user_period_df.columns:
+        print("No data found for this user in the specified period.")
+        return None
 
     session_scores = []
     sub_scores_list = []
@@ -252,11 +279,6 @@ def get_concentration_score( full_df: pd.DataFrame, user_id: str, start_date: st
             sub_scores[metric] * weight for metric, weight in METRIC_WEIGHTS.items()
         )
         session_scores.append(final_session_score)
-        # print(f"Session {session_id} Score: {final_session_score:.3f}")
-        # Optional: print sub_scores for debugging
-        # for metric, score in sub_scores.items():
-        #     print(f"  - {metric}: {score:.3f}")
-
 
     if not session_scores:
         print("No valid sessions found to calculate a score.")
@@ -265,5 +287,5 @@ def get_concentration_score( full_df: pd.DataFrame, user_id: str, start_date: st
     # Return the average score across all sessions in the period
     return {
         "concentration_score": np.mean(session_scores),
-        "sub_scores": sub_scores_list
+        "sub_scores": sub_scores_list,
     }
