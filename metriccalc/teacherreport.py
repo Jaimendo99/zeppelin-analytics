@@ -8,6 +8,7 @@ from metriccalc.stress import stress_score_
 # 1. Define the Pydantic models for the output structure
 class Student(BaseModel):
     user_id: str
+    fullname: str
     completion_percentage: float
     concentration_score: float
     stress_score: float
@@ -21,7 +22,7 @@ class DailyConcentration(BaseModel):
 
 
 class TeacherReport(BaseModel):
-    avg_time_course: float
+    avg_time_course: float # decimal
     students_table: List[Student]
     completed_course: float
     total_sessions: int
@@ -95,6 +96,14 @@ async def get_teacher_report(
         .reset_index(name="stress_score")
     )
 
+    users = await api.get_users()
+    if users:
+        users_df = pd.DataFrame(users)
+    else:
+        users_df = pd.DataFrame(columns=["user_id", "name"])
+
+
+
     students_table_df = pd.merge(concentration, stress, on="user_id", how="outer")
     students_table_df = pd.merge(
         students_table_df, students_progress, on="user_id", how="outer"
@@ -103,6 +112,10 @@ async def get_teacher_report(
             students_table_df["completion_percentage"].fillna(0) / 100
     )
     students_table_df.fillna(0, inplace=True)
+
+    students_table_user = pd.merge(students_table_df, users_df, on='user_id', how='left').drop(columns=['email', 'type_id'])
+    students_table_user['fullname'] = students_table_user['name'] + ' ' + students_table_user['lastname']
+    students_table_user.drop(columns=['name', 'lastname'], inplace=True)
 
     completed_course = students_table_df["completion_percentage"].mean()
     total_sessions = df_filtered["sessionId"].nunique()
@@ -143,7 +156,7 @@ async def get_teacher_report(
     # --- Data Transformation to Pydantic Models ---
 
     # Convert DataFrames to lists of dictionaries
-    student_records = students_table_df.to_dict(orient="records")
+    student_records = students_table_user.to_dict(orient="records")
 
     concentration_df.rename(columns={"title": "course_title"}, inplace=True)
     concentration_records = concentration_df.to_dict(orient="records")
